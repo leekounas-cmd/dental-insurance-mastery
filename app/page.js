@@ -60,6 +60,37 @@ const getBestVoice = () => {
   return voices.find(v => v.lang === "en-US") || voices.find(v => v.lang.startsWith("en")) || null;
 };
 
+function GlossaryTerm({ e, expanded, onToggle, chapters, onGoTo, T, font }) {
+  return (
+    <div style={{ borderBottom: `1px solid ${T.border}40`, marginBottom: 2 }}>
+      <button onClick={onToggle} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "transparent", border: "none", padding: "11px 0", cursor: "pointer", textAlign: "left", fontFamily: font }}>
+        <span style={{ fontSize: 14, color: expanded ? T.blue : T.text, fontWeight: expanded ? 800 : 600, flex: 1 }}>{e.term}</span>
+        <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "2px 7px", borderRadius: 5, flexShrink: 0 }}>{e.cat}</span>
+        <span style={{ fontSize: 12, color: T.muted, marginLeft: 4 }}>{expanded ? "▲" : "▼"}</span>
+      </button>
+      {expanded && (
+        <div style={{ paddingBottom: 12 }}>
+          <p style={{ fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500, margin: "0 0 10px" }}>{e.def}</p>
+          {chapters?.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: T.muted, letterSpacing: "0.08em", marginBottom: 6 }}>APPEARS IN</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {chapters.map(ch => (
+                  <button key={ch.id} onClick={() => onGoTo(ch)} style={{ display: "flex", alignItems: "center", gap: 8, background: T.greenLight, border: `1px solid ${T.green}40`, borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontFamily: font, textAlign: "left" }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: T.green, background: `${T.green}20`, padding: "2px 7px", borderRadius: 5, flexShrink: 0 }}>CH {ch.num}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: T.text, flex: 1 }}>{ch.title}</span>
+                    <span style={{ fontSize: 11, color: T.green, fontWeight: 800 }}>Go →</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WordHighlight({ text, charIdx }) {
   const tokens = [];
   const re = /\S+|\s+/g;
@@ -191,6 +222,18 @@ export default function App() {
     const q = glossaryQ.toLowerCase();
     return REFERENCE.filter(e => e.term.toLowerCase().includes(q) || e.def.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q));
   }, [glossaryQ]);
+
+  const termChapterMap = useMemo(() => {
+    const map = {};
+    for (const ref of REFERENCE) {
+      const terms = [ref.term, ...ref.kw].map(t => t.toLowerCase());
+      map[ref.term] = PARTS.flatMap(p => p.chapters.map(ch => ({ ...ch, part: p }))).filter(ch => {
+        const hay = [ch.title, ch.topics.join(" "), ch.content].join(" ").toLowerCase();
+        return terms.some(t => t.length > 2 && hay.includes(t));
+      });
+    }
+    return map;
+  }, []);
 
   // Quiz
   const answerQ = useCallback((idx) => {
@@ -1086,26 +1129,13 @@ Where "a" is the zero-based index of the correct answer.`;
           </div>
           <div style={{ display: glossaryQ.trim() ? "block" : "none" }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 12 }}>{glossaryResults.length} RESULT{glossaryResults.length !== 1 ? "S" : ""}</div>
-            {glossaryResults.map(e => (
-              <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{e.term}</span>
-                </div>
-                {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
-              </button>
-            ))}
+            {glossaryResults.map(e => <GlossaryTerm key={e.term} e={e} expanded={expandedTerm === e.term} onToggle={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} chapters={termChapterMap[e.term]} onGoTo={(ch) => { setSelPart(ch.part); setSelChapter(ch); setGlossaryQ(""); setScreen("learn"); }} T={T} font={font} />)}
           </div>
           <div style={{ display: glossaryQ.trim() ? "none" : "block" }}>
             {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
               <div key={cat} style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: 12, fontWeight: 900, color: T.blue, letterSpacing: "0.08em", marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
-                {REFERENCE.filter(e => e.cat === cat).map(e => (
-                  <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${T.border}40`, padding: "10px 0", cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                    <div style={{ fontSize: 14, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
-                    {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
-                  </button>
-                ))}
+                {REFERENCE.filter(e => e.cat === cat).map(e => <GlossaryTerm key={e.term} e={e} expanded={expandedTerm === e.term} onToggle={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} chapters={termChapterMap[e.term]} onGoTo={(ch) => { setSelPart(ch.part); setSelChapter(ch); setGlossaryQ(""); setScreen("learn"); }} T={T} font={font} />)}
               </div>
             ))}
           </div>
