@@ -108,6 +108,9 @@ export default function App() {
   const searchRef = useRef(null);
   const deepContentRef = useRef({});
   const speakTextRef = useRef("");
+  const speakCharIdxRef = useRef(-1);
+  const speakRafRef = useRef(null);
+  const speakRateRef = useRef(1);
 
   // Load ALL persisted data on mount
   useEffect(() => {
@@ -847,7 +850,12 @@ Where "a" is the zero-based index of the correct answer.`;
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                 {isDeep && <div style={{ fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6 }}>AI TAKE</div>}
                 <button onClick={() => {
-                  if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); setSpeakCharIdx(-1); return; }
+                  if (speaking) {
+                    window.speechSynthesis.cancel();
+                    cancelAnimationFrame(speakRafRef.current);
+                    setSpeaking(false); setSpeakCharIdx(-1); speakCharIdxRef.current = -1;
+                    return;
+                  }
                   const text = stripMd(displayContent);
                   speakTextRef.current = text;
                   const startUtter = (rate) => {
@@ -855,17 +863,21 @@ Where "a" is the zero-based index of the correct answer.`;
                     utter.rate = rate;
                     const voice = getBestVoice();
                     if (voice) utter.voice = voice;
-                    utter.onboundary = (e) => { if (e.name === "word") setSpeakCharIdx(e.charIndex); };
-                    utter.onend = () => { setSpeaking(false); setSpeakCharIdx(-1); };
-                    utter.onerror = () => { setSpeaking(false); setSpeakCharIdx(-1); };
+                    utter.onboundary = (e) => {
+                      if (e.name !== "word") return;
+                      speakCharIdxRef.current = e.charIndex;
+                      cancelAnimationFrame(speakRafRef.current);
+                      speakRafRef.current = requestAnimationFrame(() => setSpeakCharIdx(e.charIndex));
+                    };
+                    utter.onend = () => { cancelAnimationFrame(speakRafRef.current); setSpeaking(false); setSpeakCharIdx(-1); speakCharIdxRef.current = -1; };
+                    utter.onerror = () => { cancelAnimationFrame(speakRafRef.current); setSpeaking(false); setSpeakCharIdx(-1); speakCharIdxRef.current = -1; };
                     window.speechSynthesis.speak(utter);
                   };
-                  setSpeaking(true);
-                  setSpeakCharIdx(0);
+                  setSpeaking(true); setSpeakCharIdx(0); speakCharIdxRef.current = 0;
                   if (window.speechSynthesis.getVoices().length === 0) {
-                    window.speechSynthesis.onvoiceschanged = () => startUtter(speakRate);
+                    window.speechSynthesis.onvoiceschanged = () => startUtter(speakRateRef.current);
                   } else {
-                    startUtter(speakRate);
+                    startUtter(speakRateRef.current);
                   }
                 }} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, color: speaking ? T.red : T.blue, background: speaking ? T.redLight : T.blueLight, border: "none", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
                   {speaking ? "⏹ Stop" : "▶ Listen"}
@@ -873,17 +885,24 @@ Where "a" is the zero-based index of the correct answer.`;
                 <div style={{ display: "flex", gap: 3 }}>
                   {[1, 1.5, 2].map(r => (
                     <button key={r} onClick={() => {
+                      speakRateRef.current = r;
                       setSpeakRate(r);
                       if (speaking) {
                         window.speechSynthesis.cancel();
+                        cancelAnimationFrame(speakRafRef.current);
                         const text = speakTextRef.current;
                         const utter = new SpeechSynthesisUtterance(text);
                         utter.rate = r;
                         const voice = getBestVoice();
                         if (voice) utter.voice = voice;
-                        utter.onboundary = (e) => { if (e.name === "word") setSpeakCharIdx(e.charIndex); };
-                        utter.onend = () => { setSpeaking(false); setSpeakCharIdx(-1); };
-                        utter.onerror = () => { setSpeaking(false); setSpeakCharIdx(-1); };
+                        utter.onboundary = (e) => {
+                          if (e.name !== "word") return;
+                          speakCharIdxRef.current = e.charIndex;
+                          cancelAnimationFrame(speakRafRef.current);
+                          speakRafRef.current = requestAnimationFrame(() => setSpeakCharIdx(e.charIndex));
+                        };
+                        utter.onend = () => { cancelAnimationFrame(speakRafRef.current); setSpeaking(false); setSpeakCharIdx(-1); };
+                        utter.onerror = () => { cancelAnimationFrame(speakRafRef.current); setSpeaking(false); setSpeakCharIdx(-1); };
                         window.speechSynthesis.speak(utter);
                       }
                     }} style={{ fontSize: 10, fontWeight: 800, color: speakRate === r ? T.green : T.muted, background: speakRate === r ? T.greenLight : T.card, border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>
@@ -1094,45 +1113,39 @@ Where "a" is the zero-based index of the correct answer.`;
               {aiLoading ? "⏳ Thinking…" : `🤖 Ask AI: "${searchQ.length > 30 ? searchQ.slice(0, 30) + "…" : searchQ}"`}
             </Btn>
           </div>
-          {aiAnswer && (
-            <div style={{ background: T.blueLight, border: `2px solid ${T.blue}30`, borderRadius: 18, padding: "16px", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", color: T.blue, marginBottom: 8 }}>AI ANSWER</div>
-              <div style={{ fontSize: 13.5, lineHeight: 1.75, color: T.text, fontWeight: 500, whiteSpace: "pre-wrap" }}>
-                {aiAnswer.split(/(\*\*[^*]+\*\*)/g).map((s, i) => s.startsWith("**") ? <strong key={i} style={{ color: T.blue, fontWeight: 800 }}>{s.replace(/\*\*/g, "")}</strong> : s)}
-              </div>
-              <button onClick={() => setAiAnswer("")} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, fontWeight: 700, cursor: "pointer", marginTop: 8, fontFamily: font }}>Dismiss</button>
+          <div style={{ display: aiAnswer ? "block" : "none", background: T.blueLight, border: `2px solid ${T.blue}30`, borderRadius: 18, padding: "16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", color: T.blue, marginBottom: 8 }}>AI ANSWER</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.75, color: T.text, fontWeight: 500, whiteSpace: "pre-wrap" }}>
+              {aiAnswer.split(/(\*\*[^*]+\*\*)/g).map((s, i) => s.startsWith("**") ? <strong key={i} style={{ color: T.blue, fontWeight: 800 }}>{s.replace(/\*\*/g, "")}</strong> : s)}
             </div>
-          )}
-          {searchQ.trim() && searchResults.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 8 }}>{searchResults.length} RESULT{searchResults.length !== 1 ? "S" : ""}</div>
-              {searchResults.map(e => (
-                <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: T.text, flex: 1 }}>{e.term}</span>
-                  </div>
-                  {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
-                </button>
-              ))}
-            </div>
-          )}
-          {!searchQ.trim() && (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: T.muted, marginBottom: 12 }}>BROWSE ALL TERMS</div>
-              {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
-                <div key={cat} style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: T.blue, marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
-                  {REFERENCE.filter(e => e.cat === cat).map(e => (
-                    <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "left", fontFamily: font, borderBottom: `1px solid ${T.border}40` }}>
-                      <div style={{ fontSize: 13.5, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
-                      {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500, paddingRight: 8 }}>{e.def}</div>}
-                    </button>
-                  ))}
+            <button onClick={() => setAiAnswer("")} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, fontWeight: 700, cursor: "pointer", marginTop: 8, fontFamily: font }}>Dismiss</button>
+          </div>
+          <div style={{ display: searchQ.trim() && searchResults.length > 0 ? "block" : "none", marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 8 }}>{searchResults.length} RESULT{searchResults.length !== 1 ? "S" : ""}</div>
+            {searchResults.map(e => (
+              <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: T.text, flex: 1 }}>{e.term}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: searchQ.trim() ? "none" : "block" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: T.muted, marginBottom: 12 }}>BROWSE ALL TERMS</div>
+            {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
+              <div key={cat} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: T.blue, marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
+                {REFERENCE.filter(e => e.cat === cat).map(e => (
+                  <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "left", fontFamily: font, borderBottom: `1px solid ${T.border}40` }}>
+                    <div style={{ fontSize: 13.5, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
+                    {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500, paddingRight: 8 }}>{e.def}</div>}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </Wrap>
     );
