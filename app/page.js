@@ -60,6 +60,57 @@ const getBestVoice = () => {
   return voices.find(v => v.lang === "en-US") || voices.find(v => v.lang.startsWith("en")) || null;
 };
 
+function Wrap({ children }) {
+  return <div style={{ fontFamily: font, background: T.bg, minHeight: "100vh", color: T.text }}>{children}</div>;
+}
+
+function Nav({ title, onBack, streakAlive, streak, xp }) {
+  return (
+    <div style={{ background: T.surface, borderBottom: `2px solid ${T.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10, boxShadow: T.shadow }}>
+      <button onClick={onBack} style={{ background: T.card, border: `2px solid ${T.border}`, borderRadius: 12, padding: "6px 14px", cursor: "pointer", fontSize: 13, fontWeight: 800, color: T.textSecondary, fontFamily: font }}>← Back</button>
+      <span style={{ fontSize: 14, fontWeight: 800, color: T.textSecondary, flex: 1 }}>{title}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 13 }}>🔥</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: streakAlive ? T.orange : T.dim }}>{streakAlive ? streak : 0}</span>
+        <div style={{ width: 1, height: 16, background: T.border, margin: "0 4px" }} />
+        <span style={{ fontSize: 13, fontWeight: 800, color: T.gold }}>{xp} XP</span>
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ pct, color, height = 10 }) {
+  const c = color || T.green;
+  return (
+    <div style={{ height, background: T.card, borderRadius: height, overflow: "hidden", border: `2px solid ${T.border}` }}>
+      <div style={{ height: "100%", width: `${pct}%`, background: c, borderRadius: height, transition: "width 0.5s ease" }} />
+    </div>
+  );
+}
+
+function Btn({ children, color, dark, onClick, disabled, full, style: s = {} }) {
+  const c = color || T.green;
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background: disabled ? T.dim : c, color: dark || "#fff", border: "none",
+      borderBottom: disabled ? "none" : `4px solid ${c === T.green ? T.greenDark : c === T.blue ? "#0f8bc0" : c === T.orange ? "#cc7a00" : "rgba(0,0,0,0.2)"}`,
+      borderRadius: 16, padding: "14px 24px", fontSize: 15, fontWeight: 800, cursor: disabled ? "default" : "pointer",
+      fontFamily: font, width: full ? "100%" : "auto", transition: "all 0.15s", letterSpacing: "0.02em",
+      ...(disabled ? { opacity: 0.5 } : {}), ...s,
+    }}>{children}</button>
+  );
+}
+
+function CorrectOverlay({ show }) {
+  if (!show) return null;
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 100 }}>
+      <div style={{ fontSize: 80, animation: "popIn 0.5s ease" }}>✅</div>
+      <style>{`@keyframes popIn { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 50% { transform: scale(1.3) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 0; } }`}</style>
+    </div>
+  );
+}
+
 function GlossaryTerm({ e, expanded, onToggle, chapters, onGoTo, T, font }) {
   return (
     <div style={{ borderBottom: `1px solid ${T.border}40`, marginBottom: 2 }}>
@@ -374,44 +425,6 @@ Where "a" is the zero-based index of the correct answer.`;
     setLoadingQuiz(false);
   }, [masteryCount]);
 
-  /* ── SHARED COMPONENTS ── */
-  const Wrap = ({ children }) => <div style={{ fontFamily: font, background: T.bg, minHeight: "100vh", color: T.text }}>{children}</div>;
-
-  const Nav = ({ title, onBack }) => (
-    <div style={{ background: T.surface, borderBottom: `2px solid ${T.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10, boxShadow: T.shadow }}>
-      <button onClick={onBack} style={{ background: T.card, border: `2px solid ${T.border}`, borderRadius: 12, padding: "6px 14px", cursor: "pointer", fontSize: 13, fontWeight: 800, color: T.textSecondary, fontFamily: font }}>← Back</button>
-      <span style={{ fontSize: 14, fontWeight: 800, color: T.textSecondary, flex: 1 }}>{title}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 13 }}>🔥</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: streakAlive ? T.orange : T.dim }}>{streakAlive ? gd.streak : 0}</span>
-        <div style={{ width: 1, height: 16, background: T.border, margin: "0 4px" }} />
-        <span style={{ fontSize: 13, fontWeight: 800, color: T.gold }}>{gd.xp} XP</span>
-      </div>
-    </div>
-  );
-
-  const ProgressBar = ({ pct, color = T.green, height = 10 }) => (
-    <div style={{ height, background: T.card, borderRadius: height, overflow: "hidden", border: `2px solid ${T.border}` }}>
-      <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: height, transition: "width 0.5s ease" }} />
-    </div>
-  );
-
-  const Btn = ({ children, color = T.green, dark, onClick, disabled, full, style: s = {} }) => (
-    <button onClick={onClick} disabled={disabled} style={{
-      background: disabled ? T.dim : color, color: dark || "#fff", border: "none",
-      borderBottom: disabled ? "none" : `4px solid ${color === T.green ? T.greenDark : color === T.blue ? "#0f8bc0" : color === T.orange ? "#cc7a00" : "rgba(0,0,0,0.2)"}`,
-      borderRadius: 16, padding: "14px 24px", fontSize: 15, fontWeight: 800, cursor: disabled ? "default" : "pointer",
-      fontFamily: font, width: full ? "100%" : "auto", transition: "all 0.15s", letterSpacing: "0.02em",
-      ...(disabled ? { opacity: 0.5 } : {}), ...s,
-    }}>{children}</button>
-  );
-
-  const CorrectOverlay = () => showCorrectAnim ? (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 100 }}>
-      <div style={{ fontSize: 80, animation: "popIn 0.5s ease" }}>✅</div>
-      <style>{`@keyframes popIn { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 50% { transform: scale(1.3) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 0; } }`}</style>
-    </div>
-  ) : null;
 
   /* ── ONBOARDING ── */
   if (showOnboarding) return (
@@ -448,7 +461,7 @@ Where "a" is the zero-based index of the correct answer.`;
   /* ── SETTINGS ── */
   if (showSettings) return (
     <Wrap>
-      <Nav title="Settings" onBack={() => setShowSettings(false)} />
+      <Nav title="Settings" onBack={() => setShowSettings(false)} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
         <div style={{ background: T.surface, border: `2px solid ${T.border}`, borderRadius: 18, padding: "20px", marginBottom: 16, boxShadow: T.shadow }}>
           <h3 style={{ fontSize: 16, fontWeight: 900, marginTop: 0, marginBottom: 12 }}>Your Progress</h3>
@@ -515,7 +528,7 @@ Where "a" is the zero-based index of the correct answer.`;
     const pct = level.nextXP ? ((gd.xp - level.minXP) / (level.nextXP - level.minXP)) * 100 : 100;
     return (
       <Wrap>
-        <CorrectOverlay />
+        <CorrectOverlay show={showCorrectAnim} />
         <div style={{ background: T.green, padding: "28px 20px 20px", color: "#fff" }}>
           <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <div>
@@ -629,7 +642,7 @@ Where "a" is the zero-based index of the correct answer.`;
     if (!selPart) {
       return (
         <Wrap>
-          <Nav title="Learn" onBack={() => setScreen("home")} />
+          <Nav title="Learn" onBack={() => setScreen("home")} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
           <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
             {PARTS.map((part, pi) => (
               <div key={part.id} style={{ marginBottom: 24 }}>
@@ -657,7 +670,7 @@ Where "a" is the zero-based index of the correct answer.`;
     const pc = colors[pi % colors.length];
     return (
       <Wrap>
-        <Nav title={selPart.title} onBack={() => setSelPart(null)} />
+        <Nav title={selPart.title} onBack={() => setSelPart(null)} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
           {selPart.chapters.map((ch) => {
             const done = gd.completed[ch.id];
@@ -683,8 +696,8 @@ Where "a" is the zero-based index of the correct answer.`;
       const isDone = quizState.current >= quizState.questions.length;
       return (
         <Wrap>
-          <CorrectOverlay />
-          <Nav title={`Ch ${selChapter.num} Quiz`} onBack={() => { setQuizState(null); setQuizFeedback(null); }} />
+          <CorrectOverlay show={showCorrectAnim} />
+          <Nav title={`Ch ${selChapter.num} Quiz`} onBack={() => { setQuizState(null); setQuizFeedback(null); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
           <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
             {isDone ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
@@ -829,7 +842,7 @@ Where "a" is the zero-based index of the correct answer.`;
     const isDeep = !!deepContent[selChapter.id];
     return (
       <Wrap>
-        <Nav title={selPart?.title || "Learn"} onBack={() => { window.speechSynthesis?.cancel(); setSpeaking(false); setSelChapter(null); }} />
+        <Nav title={selPart?.title || "Learn"} onBack={() => { window.speechSynthesis?.cancel(); setSpeaking(false); setSelChapter(null); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <h2 style={{ fontSize: 20, fontWeight: 900, margin: 0, flex: 1, lineHeight: 1.3 }}>Ch {selChapter.num}: {selChapter.title}</h2>
@@ -979,7 +992,7 @@ Where "a" is the zero-based index of the correct answer.`;
     if (!scenarioState) { setScreen("home"); return null; }
     if (scenarioState.finished) return (
       <Wrap>
-        <Nav title="Scenarios" onBack={() => { setScenarioState(null); setScreen("home"); }} />
+        <Nav title="Scenarios" onBack={() => { setScenarioState(null); setScreen("home"); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 16px", textAlign: "center" }}>
           <div style={{ fontSize: 60, marginBottom: 12 }}>🎯</div>
           <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Scenarios Complete!</h2>
@@ -991,8 +1004,8 @@ Where "a" is the zero-based index of the correct answer.`;
     const sc = scenarioState.scenarios[scenarioState.current];
     return (
       <Wrap>
-        <CorrectOverlay />
-        <Nav title="Scenario Challenge" onBack={() => { setScenarioState(null); setScenarioAnswer(null); setScreen("home"); }} />
+        <CorrectOverlay show={showCorrectAnim} />
+        <Nav title="Scenario Challenge" onBack={() => { setScenarioState(null); setScenarioAnswer(null); setScreen("home"); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ display: "flex", gap: 5, marginBottom: 18 }}>
             {scenarioState.scenarios.map((_, i) => (
@@ -1052,7 +1065,7 @@ Where "a" is the zero-based index of the correct answer.`;
       const xpE = dp.score * 8;
       return (
         <Wrap>
-          <Nav title="Daily Practice" onBack={() => { setDailyPractice(null); setScreen("home"); }} />
+          <Nav title="Daily Practice" onBack={() => { setDailyPractice(null); setScreen("home"); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
           <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 60, marginBottom: 12 }}>⚡</div>
             <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 6 }}>Practice Complete!</h2>
@@ -1087,7 +1100,7 @@ Where "a" is the zero-based index of the correct answer.`;
     const q = dp.questions[dp.current];
     return (
       <Wrap>
-        <Nav title="Daily Practice" onBack={() => { setDailyPractice(null); setScreen("home"); }} />
+        <Nav title="Daily Practice" onBack={() => { setDailyPractice(null); setScreen("home"); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ display: "flex", gap: 5, marginBottom: 18 }}>
             {dp.questions.map((_, i) => (
@@ -1119,7 +1132,7 @@ Where "a" is the zero-based index of the correct answer.`;
       : null;
     return (
       <Wrap>
-        <Nav title="Glossary" onBack={() => { setScreen("home"); setGlossaryQ(""); }} />
+        <Nav title="Glossary" onBack={() => { setScreen("home"); setGlossaryQ(""); }} streakAlive={streakAlive} streak={gd.streak} xp={gd.xp} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ position: "relative", marginBottom: 20 }}>
             <input ref={glossaryRef} type="text" placeholder="Search terms…" value={glossaryQ} onChange={e => setGlossaryQ(e.target.value)}
