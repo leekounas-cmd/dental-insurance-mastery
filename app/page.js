@@ -48,6 +48,38 @@ const T = {
 
 const font = "'Nunito', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 
+const stripMd = (t) => t.replace(/\*\*/g, "").replace(/^#+\s/gm, "").replace(/^-\s/gm, "").trim();
+
+const getBestVoice = () => {
+  const voices = window.speechSynthesis.getVoices();
+  const prefs = ["Samantha", "Ava", "Zoe", "Karen", "Tessa", "Moira", "Google US English", "Microsoft Aria"];
+  for (const name of prefs) {
+    const v = voices.find(v => v.name.includes(name));
+    if (v) return v;
+  }
+  return voices.find(v => v.lang === "en-US") || voices.find(v => v.lang.startsWith("en")) || null;
+};
+
+function WordHighlight({ text, charIdx }) {
+  const tokens = [];
+  const re = /\S+|\s+/g;
+  let m;
+  while ((m = re.exec(text)) !== null) tokens.push({ t: m[0], s: m.index, w: /\S/.test(m[0]) });
+  let active = -1;
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].w && tokens[i].s <= charIdx) active = i;
+  }
+  return (
+    <div style={{ fontSize: 14, lineHeight: 1.9, fontWeight: 500 }}>
+      {tokens.map((tok, i) => (
+        <span key={i} style={i === active ? { background: "#e6f8d4", color: "#46a302", borderRadius: 3, fontWeight: 800, padding: "0 1px" } : {}}>
+          {tok.t}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [gd, setGd] = useState({ xp: 0, streak: 0, lastDate: null, completed: {}, completedScenarios: {} });
@@ -71,8 +103,11 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [speakRate, setSpeakRate] = useState(1);
+  const [speakCharIdx, setSpeakCharIdx] = useState(-1);
   const searchRef = useRef(null);
   const deepContentRef = useRef({});
+  const speakTextRef = useRef("");
 
   // Load ALL persisted data on mount
   useEffect(() => {
@@ -809,22 +844,57 @@ Where "a" is the zero-based index of the correct answer.`;
             </div>
           ) : (
             <div style={{ background: T.surface, border: `2px solid ${T.border}`, borderRadius: 20, padding: "20px 18px", marginBottom: 20, boxShadow: T.shadow }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                {isDeep && <div style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6 }}>AI TAKE</div>}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                {isDeep && <div style={{ fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6 }}>AI TAKE</div>}
                 <button onClick={() => {
-                  if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return; }
-                  const text = displayContent.replace(/\*\*/g, "").replace(/^#+\s/gm, "");
-                  const utter = new SpeechSynthesisUtterance(text);
-                  utter.rate = 0.95;
-                  utter.onend = () => setSpeaking(false);
-                  utter.onerror = () => setSpeaking(false);
+                  if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); setSpeakCharIdx(-1); return; }
+                  const text = stripMd(displayContent);
+                  speakTextRef.current = text;
+                  const startUtter = (rate) => {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.rate = rate;
+                    const voice = getBestVoice();
+                    if (voice) utter.voice = voice;
+                    utter.onboundary = (e) => { if (e.name === "word") setSpeakCharIdx(e.charIndex); };
+                    utter.onend = () => { setSpeaking(false); setSpeakCharIdx(-1); };
+                    utter.onerror = () => { setSpeaking(false); setSpeakCharIdx(-1); };
+                    window.speechSynthesis.speak(utter);
+                  };
                   setSpeaking(true);
-                  window.speechSynthesis.speak(utter);
+                  setSpeakCharIdx(0);
+                  if (window.speechSynthesis.getVoices().length === 0) {
+                    window.speechSynthesis.onvoiceschanged = () => startUtter(speakRate);
+                  } else {
+                    startUtter(speakRate);
+                  }
                 }} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, color: speaking ? T.red : T.blue, background: speaking ? T.redLight : T.blueLight, border: "none", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
                   {speaking ? "⏹ Stop" : "▶ Listen"}
                 </button>
+                <div style={{ display: "flex", gap: 3 }}>
+                  {[1, 1.5, 2].map(r => (
+                    <button key={r} onClick={() => {
+                      setSpeakRate(r);
+                      if (speaking) {
+                        window.speechSynthesis.cancel();
+                        const text = speakTextRef.current;
+                        const utter = new SpeechSynthesisUtterance(text);
+                        utter.rate = r;
+                        const voice = getBestVoice();
+                        if (voice) utter.voice = voice;
+                        utter.onboundary = (e) => { if (e.name === "word") setSpeakCharIdx(e.charIndex); };
+                        utter.onend = () => { setSpeaking(false); setSpeakCharIdx(-1); };
+                        utter.onerror = () => { setSpeaking(false); setSpeakCharIdx(-1); };
+                        window.speechSynthesis.speak(utter);
+                      }
+                    }} style={{ fontSize: 10, fontWeight: 800, color: speakRate === r ? T.green : T.muted, background: speakRate === r ? T.greenLight : T.card, border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>
+                      {r}x
+                    </button>
+                  ))}
+                </div>
               </div>
-              {displayContent.split("\n\n").map((para, i) => {
+              {speaking && speakTextRef.current ? (
+                <WordHighlight text={speakTextRef.current} charIdx={speakCharIdx} />
+              ) : displayContent.split("\n\n").map((para, i) => {
                 // Handle markdown-style headers
                 if (para.startsWith("**") && para.endsWith("**") && para.length < 100) {
                   return <h3 key={i} style={{ fontSize: 16, fontWeight: 900, color: T.blue, margin: i === 0 ? "0 0 8px" : "20px 0 8px", lineHeight: 1.4 }}>{para.replace(/\*\*/g, "")}</h3>;
