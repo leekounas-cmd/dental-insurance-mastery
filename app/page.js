@@ -70,7 +70,9 @@ export default function App() {
   const [masteryCount, setMasteryCount] = useState({});
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const searchRef = useRef(null);
+  const deepContentRef = useRef({});
 
   // Load ALL persisted data on mount
   useEffect(() => {
@@ -86,7 +88,7 @@ export default function App() {
       // Load cached lesson content
       try {
         const c = await _lsGet("diq-content");
-        if (c) setDeepContent(JSON.parse(c.value));
+        if (c) { const parsed = JSON.parse(c.value); deepContentRef.current = parsed; setDeepContent(parsed); }
       } catch {}
       // Load mastery counts
       try {
@@ -103,6 +105,7 @@ export default function App() {
 
   // Save deep content to persistent storage when it changes
   const saveDeepContent = useCallback(async (newContent) => {
+    deepContentRef.current = newContent;
     setDeepContent(newContent);
     try { await _lsSet("diq-content", JSON.stringify(newContent)); } catch {}
   }, []);
@@ -228,39 +231,21 @@ export default function App() {
 
   // Load deep AI-generated content for a chapter
   const loadDeepContent = useCallback(async (chapter) => {
-    if (deepContent[chapter.id]) return;
+    if (deepContentRef.current[chapter.id]) return;
     setLoadingContent(true);
     try {
-      const topicsStr = chapter.topics.join(", ");
-      const prompt = `You are writing a comprehensive dental insurance training lesson for a dental office manager / insurance coordinator. This is Chapter ${chapter.num}: "${chapter.title}".
-
-Topics to cover in depth: ${topicsStr}
-
-Write a thorough, detailed lesson (1500-2500 words) that would train someone to actually DO this work in a dental office. Include:
-- Detailed explanations of every concept with specific examples
-- Real CDT codes where relevant (e.g., D0120, D2750, D4341)
-- Step-by-step workflows and procedures they can follow
-- Specific dollar amounts in examples (e.g., "If your fee is $1,400 and the PPO fee is $1,000...")
-- Common mistakes to avoid
-- Pro tips from experienced insurance coordinators
-- How this topic connects to getting claims PAID and maximizing collections
-
-Use **bold** for key terms and section headers. Write in a direct, practical training style — not academic. The reader needs to be able to apply this information tomorrow at the front desk.
-
-Do NOT include any meta-commentary about the lesson. Just write the training content directly. Start with the first section header.`;
-
       const r = await fetch("/api/ai", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "lesson", chapter: { num: chapter.num, title: chapter.title, topics: chapter.topics } })
       });
       const d = await r.json();
-      const text = d.text || d.content?.map(i => i.text || "").join("\n") || "";
-      saveDeepContent({ ...deepContent, [chapter.id]: text });
+      const text = d.text || "";
+      saveDeepContent({ ...deepContentRef.current, [chapter.id]: text });
     } catch (e) {
       console.error("Failed to load deep content:", e);
     }
     setLoadingContent(false);
-  }, [deepContent]);
+  }, [saveDeepContent]);
 
   // Auto-load deep content when chapter is selected
   useEffect(() => {
@@ -789,7 +774,7 @@ Where "a" is the zero-based index of the correct answer.`;
     const isDeep = !!deepContent[selChapter.id];
     return (
       <Wrap>
-        <Nav title={selPart?.title || "Learn"} onBack={() => setSelChapter(null)} />
+        <Nav title={selPart?.title || "Learn"} onBack={() => { window.speechSynthesis?.cancel(); setSpeaking(false); setSelChapter(null); }} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <h2 style={{ fontSize: 20, fontWeight: 900, margin: 0, flex: 1, lineHeight: 1.3 }}>Ch {selChapter.num}: {selChapter.title}</h2>
@@ -824,7 +809,21 @@ Where "a" is the zero-based index of the correct answer.`;
             </div>
           ) : (
             <div style={{ background: T.surface, border: `2px solid ${T.border}`, borderRadius: 20, padding: "20px 18px", marginBottom: 20, boxShadow: T.shadow }}>
-              {isDeep && <div style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6, marginBottom: 12 }}>AI TAKE</div>}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                {isDeep && <div style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6 }}>AI TAKE</div>}
+                <button onClick={() => {
+                  if (speaking) { window.speechSynthesis.cancel(); setSpeaking(false); return; }
+                  const text = displayContent.replace(/\*\*/g, "").replace(/^#+\s/gm, "");
+                  const utter = new SpeechSynthesisUtterance(text);
+                  utter.rate = 0.95;
+                  utter.onend = () => setSpeaking(false);
+                  utter.onerror = () => setSpeaking(false);
+                  setSpeaking(true);
+                  window.speechSynthesis.speak(utter);
+                }} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, color: speaking ? T.red : T.blue, background: speaking ? T.redLight : T.blueLight, border: "none", borderRadius: 6, padding: "3px 10px", cursor: "pointer" }}>
+                  {speaking ? "⏹ Stop" : "▶ Listen"}
+                </button>
+              </div>
               {displayContent.split("\n\n").map((para, i) => {
                 // Handle markdown-style headers
                 if (para.startsWith("**") && para.endsWith("**") && para.length < 100) {
