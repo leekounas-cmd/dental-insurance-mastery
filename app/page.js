@@ -805,7 +805,7 @@ Where "a" is the zero-based index of the correct answer.`;
             <div style={{ background: T.surface, border: `2px solid ${T.border}`, borderRadius: 20, padding: "24px 18px", marginBottom: 20, boxShadow: T.shadow }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                 <div style={{ width: 24, height: 24, border: `3px solid ${T.green}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                <span style={{ fontSize: 14, fontWeight: 800, color: T.green }}>Loading full lesson...</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: T.green }}>Getting AI take...</span>
               </div>
               {/* Skeleton lines */}
               {[100, 85, 92, 70, 95, 88, 60, 93, 80, 75].map((w, i) => (
@@ -814,7 +814,7 @@ Where "a" is the zero-based index of the correct answer.`;
               <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }`}</style>
               {/* Show brief content while loading */}
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${T.border}` }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: T.muted, marginBottom: 8 }}>QUICK OVERVIEW (full lesson loading...)</div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: T.muted, marginBottom: 8 }}>QUICK OVERVIEW (AI take loading...)</div>
                 {selChapter.content.split("\n\n").map((para, i) => (
                   <p key={i} style={{ margin: i === 0 ? 0 : "10px 0 0", lineHeight: 1.7, fontSize: 13, color: T.textSecondary, fontWeight: 500 }}>
                     {para.split(/(\*\*[^*]+\*\*)/g).map((seg, j) => seg.startsWith("**") ? <strong key={j} style={{ color: T.blue, fontWeight: 800 }}>{seg.replace(/\*\*/g, "")}</strong> : seg)}
@@ -824,7 +824,7 @@ Where "a" is the zero-based index of the correct answer.`;
             </div>
           ) : (
             <div style={{ background: T.surface, border: `2px solid ${T.border}`, borderRadius: 20, padding: "20px 18px", marginBottom: 20, boxShadow: T.shadow }}>
-              {isDeep && <div style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6, marginBottom: 12 }}>FULL LESSON</div>}
+              {isDeep && <div style={{ display: "inline-block", fontSize: 10, fontWeight: 900, color: T.green, background: T.greenLight, padding: "3px 8px", borderRadius: 6, marginBottom: 12 }}>AI TAKE</div>}
               {displayContent.split("\n\n").map((para, i) => {
                 // Handle markdown-style headers
                 if (para.startsWith("**") && para.endsWith("**") && para.length < 100) {

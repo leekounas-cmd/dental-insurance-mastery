@@ -6,23 +6,10 @@ export async function POST(request) {
     let maxTokens = 1000;
 
     if (type === "lesson") {
-      maxTokens = 4000;
-      prompt = `You are writing a comprehensive dental insurance training lesson for a dental office manager / insurance coordinator. This is Chapter ${chapter.num}: "${chapter.title}".
+      maxTokens = 400;
+      prompt = `You are a straight-talking dental insurance expert giving your personal take on a topic to a dental office manager. This is Chapter ${chapter.num}: "${chapter.title}". Topics: ${chapter.topics.join(", ")}.
 
-Topics to cover in depth: ${chapter.topics.join(", ")}
-
-Write a thorough, detailed lesson (1500-2500 words) that would train someone to actually DO this work in a dental office. Include:
-- Detailed explanations of every concept with specific examples
-- Real CDT codes where relevant (e.g., D0120, D2750, D4341)
-- Step-by-step workflows and procedures they can follow
-- Specific dollar amounts in examples (e.g., "If your fee is $1,400 and the PPO fee is $1,000...")
-- Common mistakes to avoid
-- Pro tips from experienced insurance coordinators
-- How this topic connects to getting claims PAID and maximizing collections
-
-Use **bold** for key terms and section headers. Write in a direct, practical training style — not academic. The reader needs to be able to apply this information tomorrow at the front desk.
-
-Do NOT include any meta-commentary about the lesson. Just write the training content directly. Start with the first section header.`;
+Give your honest 2026 take on this topic in about 150-200 words. What actually matters here, what most offices get wrong, and the one thing they should do differently. Be direct and opinionated — not a textbook summary. Use **bold** for the most important point. No intro fluff, just your take.`;
     } else if (type === "quiz") {
       maxTokens = 2000;
       prompt = `You are a dental insurance training quiz generator. Generate 5 NEW multiple-choice questions for Chapter ${chapter.num}: "${chapter.title}".
