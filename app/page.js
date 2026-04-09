@@ -1089,11 +1089,11 @@ Where "a" is the zero-based index of the correct answer.`;
               onFocus={e => e.target.style.borderColor = T.blue} onBlur={e => e.target.style.borderColor = T.border} />
             <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16 }}>🔍</span>
           </div>
-          {searchQ.trim() && (
-            <Btn onClick={() => askAI(searchQ)} disabled={aiLoading} full color={T.blue} style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, visibility: searchQ.trim() ? "visible" : "hidden" }}>
+            <Btn onClick={() => askAI(searchQ)} disabled={aiLoading || !searchQ.trim()} full color={T.blue}>
               {aiLoading ? "⏳ Thinking…" : `🤖 Ask AI: "${searchQ.length > 30 ? searchQ.slice(0, 30) + "…" : searchQ}"`}
             </Btn>
-          )}
+          </div>
           {aiAnswer && (
             <div style={{ background: T.blueLight, border: `2px solid ${T.blue}30`, borderRadius: 18, padding: "16px", marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", color: T.blue, marginBottom: 8 }}>AI ANSWER</div>
