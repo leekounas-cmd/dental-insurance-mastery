@@ -90,9 +90,7 @@ export default function App() {
   const [scenarioState, setScenarioState] = useState(null);
   const [scenarioAnswer, setScenarioAnswer] = useState(null);
   const [dailyPractice, setDailyPractice] = useState(null);
-  const [searchQ, setSearchQ] = useState("");
-  const [aiAnswer, setAiAnswer] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
+  const [glossaryQ, setGlossaryQ] = useState("");
   const [expandedTerm, setExpandedTerm] = useState(null);
   const [showLevelUp, setShowLevelUp] = useState(null);
   const [showCorrectAnim, setShowCorrectAnim] = useState(false);
@@ -105,7 +103,7 @@ export default function App() {
   const [speaking, setSpeaking] = useState(false);
   const [speakRate, setSpeakRate] = useState(1);
   const [speakCharIdx, setSpeakCharIdx] = useState(-1);
-  const searchRef = useRef(null);
+  const glossaryRef = useRef(null);
   const deepContentRef = useRef({});
   const speakTextRef = useRef("");
   const speakCharIdxRef = useRef(-1);
@@ -188,22 +186,11 @@ export default function App() {
   const totalChapters = allChapters.length;
   const level = getLevel(gd.xp);
 
-  const searchResults = useMemo(() => {
-    if (!searchQ.trim()) return [];
-    const q = searchQ.toLowerCase();
-    return REFERENCE.filter(e => e.term.toLowerCase().includes(q) || e.def.toLowerCase().includes(q) || e.kw.some(k => k.includes(q)) || e.cat.toLowerCase().includes(q));
-  }, [searchQ]);
-
-  const askAI = useCallback(async (q) => {
-    setAiLoading(true); setAiAnswer("");
-    try {
-      const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "search", searchQuery: q }) });
-      const d = await r.json();
-      setAiAnswer(d.text || d.content?.map(i => i.text || "").join("\n") || "Sorry, couldn't get an answer.");
-    } catch { setAiAnswer("Error connecting. Please try again."); }
-    setAiLoading(false);
-  }, []);
+  const glossaryResults = useMemo(() => {
+    if (!glossaryQ.trim()) return [];
+    const q = glossaryQ.toLowerCase();
+    return REFERENCE.filter(e => e.term.toLowerCase().includes(q) || e.def.toLowerCase().includes(q) || e.cat.toLowerCase().includes(q));
+  }, [glossaryQ]);
 
   // Quiz
   const answerQ = useCallback((idx) => {
@@ -557,7 +544,7 @@ Where "a" is the zero-based index of the correct answer.`;
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
             {[
               { icon: "📖", label: "Learn", sub: "32 chapters", color: T.green, bg: T.greenLight, action: () => setScreen("learn") },
-              { icon: "🔍", label: "Reference", sub: "Search & AI", color: T.blue, bg: T.blueLight, action: () => { setScreen("search"); setTimeout(() => searchRef.current?.focus(), 100); } },
+              { icon: "📚", label: "Glossary", sub: "Terms & definitions", color: T.blue, bg: T.blueLight, action: () => { setScreen("glossary"); setTimeout(() => glossaryRef.current?.focus(), 100); } },
               { icon: "🎯", label: "Scenarios", sub: "Real-world", color: T.orange, bg: T.orangeLight, action: () => { setScenarioState({ scenarios: [...SCENARIOS].sort(() => Math.random() - 0.5).slice(0, 3), current: 0, totalXP: 0, finished: false }); setScreen("scenarios"); } },
               { icon: "⚡", label: "Daily Practice", sub: "5 questions", color: T.purple, bg: T.purpleLight, action: startDaily },
             ].map(m => (
@@ -1095,57 +1082,49 @@ Where "a" is the zero-based index of the correct answer.`;
     );
   }
 
-  /* ── SEARCH / REFERENCE ── */
-  if (screen === "search") {
+  /* ── GLOSSARY ── */
+  if (screen === "glossary") {
+    const filtered = glossaryQ.trim()
+      ? REFERENCE.filter(e => e.term.toLowerCase().includes(glossaryQ.toLowerCase()) || e.def.toLowerCase().includes(glossaryQ.toLowerCase()) || e.cat.toLowerCase().includes(glossaryQ.toLowerCase()))
+      : null;
     return (
       <Wrap>
-        <Nav title="Reference" onBack={() => { setScreen("home"); setSearchQ(""); setAiAnswer(""); }} />
+        <Nav title="Glossary" onBack={() => { setScreen("home"); setGlossaryQ(""); }} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
-          <div style={{ position: "relative", marginBottom: 16 }}>
-            <input ref={searchRef} type="text" placeholder="Search terms, CDT codes, or ask a question…" value={searchQ} onChange={e => setSearchQ(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && searchQ.trim()) askAI(searchQ); }}
-              style={{ width: "100%", boxSizing: "border-box", background: T.surface, border: `2px solid ${T.border}`, borderRadius: 14, padding: "14px 16px 14px 42px", fontSize: 15, color: T.text, outline: "none", fontFamily: font, fontWeight: 600, transition: "border 0.2s" }}
+          <div style={{ position: "relative", marginBottom: 20 }}>
+            <input ref={glossaryRef} type="text" placeholder="Search terms…" value={glossaryQ} onChange={e => setGlossaryQ(e.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", background: T.surface, border: `2px solid ${T.border}`, borderRadius: 14, padding: "13px 16px 13px 42px", fontSize: 15, color: T.text, outline: "none", fontFamily: font, fontWeight: 600 }}
               onFocus={e => e.target.style.borderColor = T.blue} onBlur={e => e.target.style.borderColor = T.border} />
             <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16 }}>🔍</span>
           </div>
-          <div style={{ marginBottom: 16, visibility: searchQ.trim() ? "visible" : "hidden" }}>
-            <Btn onClick={() => askAI(searchQ)} disabled={aiLoading || !searchQ.trim()} full color={T.blue}>
-              {aiLoading ? "⏳ Thinking…" : `🤖 Ask AI: "${searchQ.length > 30 ? searchQ.slice(0, 30) + "…" : searchQ}"`}
-            </Btn>
-          </div>
-          <div style={{ display: aiAnswer ? "block" : "none", background: T.blueLight, border: `2px solid ${T.blue}30`, borderRadius: 18, padding: "16px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", color: T.blue, marginBottom: 8 }}>AI ANSWER</div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.75, color: T.text, fontWeight: 500, whiteSpace: "pre-wrap" }}>
-              {aiAnswer.split(/(\*\*[^*]+\*\*)/g).map((s, i) => s.startsWith("**") ? <strong key={i} style={{ color: T.blue, fontWeight: 800 }}>{s.replace(/\*\*/g, "")}</strong> : s)}
+          {filtered ? (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 12 }}>{filtered.length} RESULT{filtered.length !== 1 ? "S" : ""}</div>
+              {filtered.map(e => (
+                <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{e.term}</span>
+                  </div>
+                  {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
+                </button>
+              ))}
             </div>
-            <button onClick={() => setAiAnswer("")} style={{ background: "none", border: "none", color: T.muted, fontSize: 12, fontWeight: 700, cursor: "pointer", marginTop: 8, fontFamily: font }}>Dismiss</button>
-          </div>
-          <div style={{ display: searchQ.trim() && searchResults.length > 0 ? "block" : "none", marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 8 }}>{searchResults.length} RESULT{searchResults.length !== 1 ? "S" : ""}</div>
-            {searchResults.map(e => (
-              <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: T.text, flex: 1 }}>{e.term}</span>
+          ) : (
+            <div>
+              {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
+                <div key={cat} style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: T.blue, letterSpacing: "0.08em", marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
+                  {REFERENCE.filter(e => e.cat === cat).map(e => (
+                    <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${T.border}40`, padding: "10px 0", cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                      <div style={{ fontSize: 14, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
+                      {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
+                    </button>
+                  ))}
                 </div>
-                {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: searchQ.trim() ? "none" : "block" }}>
-            <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: "0.08em", color: T.muted, marginBottom: 12 }}>BROWSE ALL TERMS</div>
-            {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
-              <div key={cat} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, color: T.blue, marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
-                {REFERENCE.filter(e => e.cat === cat).map(e => (
-                  <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "left", fontFamily: font, borderBottom: `1px solid ${T.border}40` }}>
-                    <div style={{ fontSize: 13.5, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
-                    {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500, paddingRight: 8 }}>{e.def}</div>}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </Wrap>
     );
