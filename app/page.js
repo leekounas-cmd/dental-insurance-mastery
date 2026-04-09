@@ -1084,34 +1084,31 @@ Where "a" is the zero-based index of the correct answer.`;
               onFocus={e => e.target.style.borderColor = T.blue} onBlur={e => e.target.style.borderColor = T.border} />
             <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16 }}>🔍</span>
           </div>
-          {filtered ? (
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 12 }}>{filtered.length} RESULT{filtered.length !== 1 ? "S" : ""}</div>
-              {filtered.map(e => (
-                <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{e.term}</span>
-                  </div>
-                  {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div>
-              {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
-                <div key={cat} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: T.blue, letterSpacing: "0.08em", marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
-                  {REFERENCE.filter(e => e.cat === cat).map(e => (
-                    <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${T.border}40`, padding: "10px 0", cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                      <div style={{ fontSize: 14, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
-                      {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
-                    </button>
-                  ))}
+          <div style={{ display: glossaryQ.trim() ? "block" : "none" }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: T.muted, marginBottom: 12 }}>{glossaryResults.length} RESULT{glossaryResults.length !== 1 ? "S" : ""}</div>
+            {glossaryResults.map(e => (
+              <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: T.surface, border: `2px solid ${expandedTerm === e.term ? T.blue + "40" : T.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 900, color: T.blue, background: T.blueLight, padding: "3px 8px", borderRadius: 6 }}>{e.cat}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{e.term}</span>
                 </div>
-              ))}
-            </div>
-          )}
+                {expandedTerm === e.term && <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.border}`, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: glossaryQ.trim() ? "none" : "block" }}>
+            {[...new Set(REFERENCE.map(e => e.cat))].sort().map(cat => (
+              <div key={cat} style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: T.blue, letterSpacing: "0.08em", marginBottom: 8, paddingBottom: 6, borderBottom: `2px solid ${T.border}` }}>{cat}</div>
+                {REFERENCE.filter(e => e.cat === cat).map(e => (
+                  <button key={e.term} onClick={() => setExpandedTerm(expandedTerm === e.term ? null : e.term)} style={{ display: "block", width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${T.border}40`, padding: "10px 0", cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                    <div style={{ fontSize: 14, color: T.text, fontWeight: expandedTerm === e.term ? 800 : 600 }}>{e.term}</div>
+                    {expandedTerm === e.term && <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.7, color: T.textSecondary, fontWeight: 500 }}>{e.def}</div>}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </Wrap>
     );
