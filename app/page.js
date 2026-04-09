@@ -591,27 +591,16 @@ Where "a" is the zero-based index of the correct answer.`;
             {PARTS.map((part, pi) => (
               <div key={part.id} style={{ marginBottom: 24 }}>
                 <div style={{ fontSize: 13, fontWeight: 900, color: colors[pi % colors.length], marginBottom: 10, letterSpacing: "0.04em" }}>{part.title.toUpperCase()}</div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-                  {part.chapters.map((ch, ci) => {
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {part.chapters.map((ch) => {
                     const done = gd.completed[ch.id];
-                    const locked = false; // All chapters accessible
                     const pc = colors[pi % colors.length];
                     return (
-                      <div key={ch.id} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                        {ci > 0 && <div style={{ width: 3, height: 20, background: done ? pc : T.border, borderRadius: 2 }} />}
-                        <button onClick={() => { setSelPart(part); setSelChapter(ch); }} disabled={locked} style={{
-                          width: 64, height: 64, borderRadius: 32, display: "flex", alignItems: "center", justifyContent: "center",
-                          background: done ? pc : locked ? T.card : T.surface,
-                          border: `3px solid ${done ? pc : locked ? T.border : pc}`,
-                          borderBottom: `5px solid ${done ? (pc === T.green ? T.greenDark : "rgba(0,0,0,0.2)") : locked ? T.border : pc}`,
-                          cursor: locked ? "default" : "pointer", fontSize: done ? 24 : 16, fontWeight: 900,
-                          color: done ? "#fff" : locked ? T.dim : pc, transition: "all 0.15s", opacity: locked ? 0.5 : 1,
-                          boxShadow: done ? `0 3px 12px ${pc}40` : "none",
-                        }}>
-                          {done ? "✓" : locked ? "🔒" : ch.num}
-                        </button>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: locked ? T.dim : T.textSecondary, marginTop: 4, textAlign: "center", maxWidth: 100 }}>{ch.title.length > 20 ? ch.title.slice(0, 20) + "…" : ch.title}</div>
-                      </div>
+                      <button key={ch.id} onClick={() => { setSelPart(part); setSelChapter(ch); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: done ? T.greenLight : T.surface, border: `2px solid ${done ? T.green + "60" : T.border}`, borderRadius: 12, padding: "10px 14px", cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                        <span style={{ fontSize: 10, fontWeight: 900, color: done ? T.green : pc, background: done ? `${T.green}20` : `${pc}18`, padding: "3px 8px", borderRadius: 6, flexShrink: 0 }}>{done ? "✓" : `CH ${ch.num}`}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: T.text, flex: 1 }}>{ch.title}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: T.muted }}>{ch.xp} XP</span>
+                      </button>
                     );
                   })}
                 </div>
@@ -627,18 +616,16 @@ Where "a" is the zero-based index of the correct answer.`;
       <Wrap>
         <Nav title={selPart.title} onBack={() => setSelPart(null)} />
         <div style={{ maxWidth: 560, margin: "0 auto", padding: "20px 16px" }}>
-          {selPart.chapters.map((ch, ci) => {
+          {selPart.chapters.map((ch) => {
             const done = gd.completed[ch.id];
             return (
-              <button key={ch.id} onClick={() => setSelChapter(ch)} style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", background: T.surface, border: `2px solid ${done ? T.green + "50" : T.border}`, borderBottom: `4px solid ${done ? T.green + "50" : T.border}`, borderRadius: 16, padding: "14px 16px", marginBottom: 10, cursor: "pointer", textAlign: "left", fontFamily: font }}>
-                <div style={{ width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900, background: done ? T.greenLight : `${pc}15`, color: done ? T.green : pc, border: `2px solid ${done ? T.green : pc}40`, flexShrink: 0 }}>
-                  {done ? "✓" : ch.num}
-                </div>
+              <button key={ch.id} onClick={() => setSelChapter(ch)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", background: done ? T.greenLight : T.surface, border: `2px solid ${done ? T.green + "60" : T.border}`, borderBottom: `4px solid ${done ? T.green + "60" : T.border}`, borderRadius: 14, padding: "14px 16px", marginBottom: 8, cursor: "pointer", textAlign: "left", fontFamily: font }}>
+                <span style={{ fontSize: 10, fontWeight: 900, color: done ? T.green : pc, background: done ? `${T.green}20` : `${pc}18`, padding: "4px 10px", borderRadius: 8, flexShrink: 0 }}>{done ? "✓ DONE" : `CH ${ch.num}`}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Ch {ch.num}: {ch.title}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{ch.title}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: T.muted, marginTop: 2 }}>{ch.topics.slice(0, 3).join(" · ")}{ch.topics.length > 3 ? " …" : ""}</div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: pc }}>{ch.xp} XP</div>
+                <span style={{ fontSize: 11, fontWeight: 800, color: pc }}>{ch.xp} XP</span>
               </button>
             );
           })}
